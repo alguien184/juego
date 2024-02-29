@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Adivina las células!</title>
+    <style>
+        ol {
+            list-style-type: none;
+            counter-reset: question-counter;
+        }
+
+        ol li {
+            counter-increment: question-counter;
+            margin-bottom: 20px;
+        }
+
+        ol li::before {
+            content: counter(question-counter) ". ";
+            font-weight: bold;
+        }
+
+        .options button {
+            margin-right: 10px;
+            margin-bottom: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: rgb(255, 255, 255);
+        }
+
+        .options button.selected {
+            background-color: #008CBA;
+        }
+    </style>
+</head>
+<body>
+    <h1>¡Adivina las células!</h1>
+
+    <div id="timer">Tiempo restante: <span id="timeLeft">180</span> segundos</div>
+
+    <form id="cellForm">
+        <fieldset>
+            <legend>Aquí tienes 10 preguntas sobre células:</legend>
+            <ol id="questionList">
+            </ol>
+        </fieldset>
+
+        <button type="button" onclick="verificarRespuestas()">Enviar respuestas</button>
+        <button type="button" onclick="refrescarPagina()">Refrescar respuestas</button>
+    </form>
+
+    <div id="respuesta"></div>
+
+    <script>
+        var preguntasMostradas = [];
+        var preguntasRestantes = [
+            {
+                pregunta: "¿Cuál es la unidad básica de la vida?",
+                opciones: ["célula", "Átomo", "Molécula", "Tejido"],
+                respuestaCorrecta: "célula"
+            },
+            {
+                pregunta: "¿Cuáles son los dos tipos principales de células en los organismos multicelulares?",
+                opciones: ["Procariotas y eucariotas", "Animal y vegetal", "Núcleo y citoplasma", "Membrana y organelos"],
+                respuestaCorrecta: "Procariotas y eucariotas"
+            },
+            {
+                pregunta: "¿Qué estructura celular es responsable de controlar las funciones celulares y contiene el material genético?",
+                opciones: ["Núcleo", "Mitocondria", "Retículo endoplasmático", "Ribosoma"],
+                respuestaCorrecta: "Núcleo"
+            },
+            {
+                pregunta: "¿Cuál es la diferencia entre células procariotas y células eucariotas?",
+                opciones: ["Las procariotas tienen núcleo definido y las eucariotas no", "Las eucariotas tienen núcleo definido y las procariotas no", "Las procariotas son más grandes que las eucariotas", "Las eucariotas son unicelulares y las procariotas son multicelulares"],
+                respuestaCorrecta: "Las procariotas tienen núcleo definido y las eucariotas no"
+            },
+            {
+                pregunta: "¿Qué organelo celular es conocido como la 'central de energía' de la célula?",
+                opciones: ["Mitocondria", "Retículo endoplasmático", "Ribosoma", "Núcleo"],
+                respuestaCorrecta: "Mitocondria"
+            },
+            {
+                pregunta: "¿Cuál es la función principal del retículo endoplasmático?",
+                opciones: ["Síntesis de proteínas y transporte de materiales", "Almacenamiento de agua", "Producción de energía", "Reproducción celular"],
+                respuestaCorrecta: "Síntesis de proteínas y transporte de materiales"
+            },
+            {
+                pregunta: "¿Qué tipo de célula tiene una pared celular y cloroplastos?",
+                opciones: ["Célula vegetal", "Célula animal", "Célula procariota", "Célula humana"],
+                respuestaCorrecta: "Célula vegetal"
+            },
+            {
+                pregunta: "¿Qué estructura celular está compuesta principalmente de una bicapa lipídica y regula el paso de sustancias dentro y fuera de la célula?",
+                opciones: ["Membrana celular", "Pared celular", "Citoplasma", "Núcleo"],
+                respuestaCorrecta: "Membrana celular"
+            },
+            {
+                pregunta: "¿Cuál es la función principal de la mitocondria en la célula?",
+                opciones: ["Producir energía a través de la respiración celular", "Almacenar material genético", "Síntesis de proteínas", "Transporte de nutrientes"],
+                respuestaCorrecta: "Producir energía a través de la respiración celular"
+            },
+            {
+                pregunta: "¿Qué son las células madre y cuál es su importancia en la biología y la medicina?",
+                opciones: ["Son células indiferenciadas con capacidad de diferenciarse en distintos tipos celulares. Son importantes en la regeneración y el desarrollo de tejidos.", "Son células del sistema inmunológico. Son importantes en la defensa del cuerpo contra enfermedades.", "Son células especializadas en la producción de energía. Son importantes en la respiración celular.", "Son células que forman parte del sistema nervioso. Son importantes en la transmisión de señales eléctricas."],
+                respuestaCorrecta: "Son células indiferenciadas con capacidad de diferenciarse en distintos tipos celulares. Son importantes en la regeneración y el desarrollo de tejidos."
+            }
+        ];
+        var intentos = 0;
+        var timerInterval;
+
+        // Función para seleccionar una pregunta aleatoria y mostrarla en el formulario
+        function mostrarPregunta() {
+            var preguntaIndex = Math.floor(Math.random() * preguntasRestantes.length);
+            var pregunta = preguntasRestantes[preguntaIndex];
+            preguntasRestantes.splice(preguntaIndex, 1); // Eliminar la pregunta seleccionada del array de preguntas restantes
+            preguntasMostradas.push(pregunta); // Agregar la pregunta mostrada al array de preguntas mostradas
+
+            // Mezclar aleatoriamente las opciones de respuesta
+            pregunta.opciones = pregunta.opciones.sort(() => Math.random() - 0.5);
+
+            var questionList = document.getElementById("questionList");
+            var listItem = document.createElement("li");
+            listItem.innerHTML = `
+                <label>${pregunta.pregunta}</label><br>
+                <div class="options">
+                    ${pregunta.opciones.map((opcion, index) => `
+                        <button type="button" onclick="seleccionarRespuesta(this)" data-pregunta="${preguntasMostradas.length}" data-respuesta="${opcion}">
+                            ${opcion}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            questionList.appendChild(listItem);
+        }
+
+        // Función para seleccionar una respuesta
+        function seleccionarRespuesta(button) {
+            var preguntaIndex = button.getAttribute("data-pregunta") - 1;
+            var respuesta = button.getAttribute("data-respuesta");
+            var pregunta = preguntasMostradas[preguntaIndex];
+            pregunta.respuestaUsuario = respuesta;
+
+            // Remover la clase 'selected' de todos los botones de la pregunta
+            var botones = button.parentNode.querySelectorAll("button");
+            botones.forEach(function(boton) {
+                boton.classList.remove("selected");
+            });
+
+            // Agregar la clase 'selected' al botón seleccionado
+            button.classList.add("selected");
+        }
+
+        // Función para verificar las respuestas
+        function verificarRespuestas() {
+            intentos++;
+
+            if (intentos <= 3) {
+                var todasRespondidas = preguntasMostradas.every(pregunta => pregunta.hasOwnProperty("respuestaUsuario"));
+                
+                if (todasRespondidas) {
+                    var respuestasCorrectas = preguntasMostradas.map(pregunta => pregunta.respuestaCorrecta);
+                    var todasCorrectas = preguntasMostradas.every((pregunta, index) => pregunta.respuestaUsuario === respuestasCorrectas[index]);
+
+                    var respuestaHTML = "<h2>Retroalimentación:</h2>";
+                    if (!todasCorrectas) {
+                        respuestaHTML += "<p>Lo siento, no todas las respuestas son correctas.</p>";
+                    }
+
+                    respuestaHTML += "<p>Tu puntuación actual es: " + contarRespuestasCorrectas() + "</p>";
+
+                    document.getElementById("respuesta").innerHTML = respuestaHTML;
+                } else {
+                    alert("Por favor, responde todas las preguntas antes de enviar tus respuestas.");
+                }
+            } else {
+                alert("Lo siento, has agotado tus intentos.");
+            }
+        }
+
+        // Función para contar las respuestas correctas
+        function contarRespuestasCorrectas() {
+            var contador = 0;
+            preguntasMostradas.forEach(pregunta => {
+                if (pregunta.respuestaUsuario === pregunta.respuestaCorrecta) {
+                    contador++;
+                }
+            });
+            return contador;
+        }
+
+        // Función para refrescar la página y reiniciar el juego
+        function refrescarPagina() {
+            location.reload();
+        }
+
+        // Mostrar las preguntas al cargar la página
+        window.onload = function() {
+            for (var i = 0; i < 10; i++) {
+                mostrarPregunta();
+            }
+
+            // Temporizador
+            var secondsLeft = 150;
+            var timeLeftSpan = document.getElementById("timeLeft");
+            timerInterval = setInterval(function() {
+                secondsLeft--;
+                timeLeftSpan.textContent = secondsLeft;
+
+                if (secondsLeft <= 0) {
+                    clearInterval(timerInterval);
+                    verificarRespuestas();
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>
